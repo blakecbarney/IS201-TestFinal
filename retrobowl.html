@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>College Football Season Game</title>
+  <style>
+    body{
+      margin:0;
+      background:#0b3d0b;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      font-family: Arial, Helvetica, sans-serif;
+      color:#ffffff;
+    }
+    canvas{
+      background:#1b7f1b;
+      margin-top:20px;
+      border:4px solid #fff;
+      display:block;
+    }
+    #statusMessage {
+      margin-top:10px;
+      min-height:24px;
+      font-size:16px;
+      text-align:center;
+      color:#ffe08a;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="600" height="400"></canvas>
+  <div id="statusMessage"></div>
+
+  <!-- SOUND EFFECTS -->
+  <!-- Put real sound files at these paths, e.g. assets/touchdown.mp3, assets/tackle.mp3 -->
+  <audio id="tdSound" src="assets/touchdown.mp3" preload="auto"></audio>
+  <audio id="tackleSound" src="assets/tackle.mp3" preload="auto"></audio>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const statusEl = document.getElementById("statusMessage");
+const tdSound = document.getElementById("tdSound");
+const tackleSound = document.getElementById("tackleSound");
+
+// --- CONSTANTS ---
+const MAX_LIVES = 3;
+const CHAMP_LEVEL = 20;
+const HEISMAN_LEVEL = 21;
+const LOS_Y = 260; // line of scrimmage: defenders may NOT go below this
+
+// QB (the player)
+const qb = {
+  x: canvas.width / 2 - 10,
+  y: canvas.height - 60,
+  w: 20,
+  h: 20,
+  speed: 4
+};
+
+// Game state
+let defenders = [];
+const keys = {};
+let touchdowns = 0;
+let tackles = 0;
+let level = 1;
+let lives = MAX_LIVES;
+let message = "New Season! Level 1";
+let messageTimer = 150; // frames
+let gameState = "playing"; // "playing" | "gameOver"
+
+// Countdown state
+let levelPhase = "countdown";     // "countdown" | "playing"
+let countdownTimer = 0;           // frame counter for countdown
+
+// Big announcement text (centered on field)
+let bigAnnounceText = "";
+let bigAnnounceTimer = 0;
+
+// High score (persists in localStorage)
+let highScore = Number(localStorage.getItem("cfbHighScore") || "0");
+
+// --- INPUT ---
+document.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) {
+    e.preventDefault();
+  }
+  keys[k] = true;
+
+  if (e.code === "Space") {
+    if (gameState === "gameOver") {
+      resetGame();
+    }
+  }
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+// --- MESSAGE HANDLING (below the field) ---
+function setMessage(text, durationFrames = 150) {
+  message = text;
+  messageTimer = durationFrames;
+  statusEl.textContent = text;
+}
+
+// --- LEVEL COUNTDOWN ---
+function startLevelCountdown() {
+  levelPhase = "countdown";
+  countdownTimer = 0;
+
+  // Big center-field announcements for key levels
+  if (level === CHAMP_LEVEL) {
+    bigAnnounceText = "NATIONAL CHAMPIONSHIP GAME!";
+    bigAnnounceTimer = 200;
+  } else if (level === HEISMAN_LEVEL) {
+    bigAnnounceText = "HEISMAN BONUS LEVEL!";
+    bigAnnounceTimer = 200;
+  } else {
+    bigAnnounceText = "";
+    bigAnnounceTimer = 0;
+  }
+}
+
+// --- RANK SYSTEM (based on touchdowns) ---
+function getRank(tds) {
+  if (tds >= 25) return "Heisman Legend";
+  if (tds >= 18) return "National Champion";
+  if (tds >= 13) return "All-American";
+  if (tds >= 8)  return "Star Starter";
+  if (tds >= 4)  return "Solid Starter";
+  if (tds >= 1)  return "Promising Walk-On";
+  return "Benchwarmer";
+}
+
+// --- UTILS ---
+function resetQB() {
+  qb.x = canvas.width / 2 - qb.w / 2;
+  qb.y = canvas.height - 60;
+}
+
+function resetGame() {
+  level = 1;
+  touchdowns = 0;
+  tackles = 0;
+  lives = MAX_LIVES;
+  gameState = "playing";
+  setMessage("New Season! Level 1", 180);
+  createDefendersForLevel(level);
+  resetQB();
+  startLevelCountdown();
+}
+
+// difficulty scaling by level (softened a bit)
+function createDefendersForLevel(lvl) {
+  defenders = [];
+
+  const rows = Math.min(1 + Math.floor((lvl - 1) / 4), 4);        // 1–4 rows
+  const perRow = Math.min(2 + Math.floor((lvl - 1) / 5), 5);      // 2–5 per row
+  const baseSpeed = 1.0 + 0.12 * lvl;                             // gentle speed increase
+  const maxSpeed = 4.0;                                           // hard cap
+
+  const startY = 110;
+  const gapY = 45;
+
+  for (let r = 0; r < rows; r++) {
+    const totalWidth = perRow * 60;
+    const margin = (canvas.width - totalWidth) / 2;
+
+    for (let i = 0; i < perRow; i++) {
+      let y = startY + r * gapY;
+      if (y > LOS_Y - 40) y = LOS_Y - 40; // ensure above LOS
+
+      const angle = Math.random() * Math.PI * 2;
+      let speed = baseSpeed + (Math.random() * 0.5 - 0.25);
+      if (speed > maxSpeed) speed = maxSpeed;
+      if (speed < 1.0) speed = 1.0;
+
+      defenders.push({
+        x: margin + i * 60,
+        y: y,
+        w: 22,
+        h: 22,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        baseSpeed: speed       // store base for wall slowdown logic
+      });
+    }
+  }
+}
+
+// --- CORE GAME LOGIC ---
+function handleInput() {
+  if (gameState !== "playing" || levelPhase !== "playing") return;
+
+  if (keys["arrowleft"] || keys["a"]) qb.x -= qb.speed;
+  if (keys["arrowright"] || keys["d"]) qb.x += qb.speed;
+  if (keys["arrowup"] || keys["w"]) qb.y -= qb.speed;
+  if (keys["arrowdown"] || keys["s"]) qb.y += qb.speed;
+
+  // keep qb on field
+  qb.x = Math.max(0, Math.min(canvas.width - qb.w, qb.x));
+  qb.y = Math.max(40, Math.min(canvas.height - qb.h, qb.y));
+}
+
+// bounding-box collision
+function isColliding(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+}
+
+function handleTouchdown() {
+  touchdowns++;
+  // SOUND
+  if (tdSound) {
+    tdSound.currentTime = 0;
+    tdSound.play().catch(() => {});
+  }
+
+  level++;
+
+  if (level === CHAMP_LEVEL) {
+    setMessage("National Championship Game! Level 20!", 200);
+  } else if (level === HEISMAN_LEVEL) {
+    setMessage("You are National Champion! HEISMAN Bonus Level unlocked!", 220);
+  } else if (level > HEISMAN_LEVEL) {
+    setMessage(`Touchdown! Level ${level} unlocked – the legend grows...`, 160);
+  } else {
+    setMessage(`Touchdown! Advancing to Level ${level}`, 160);
+  }
+
+  resetQB();
+  createDefendersForLevel(level);
+  startLevelCountdown();
+}
+
+function handleTackle() {
+  tackles++;
+  lives--;
+
+  // SOUND
+  if (tackleSound) {
+    tackleSound.currentTime = 0;
+    tackleSound.play().catch(() => {});
+  }
+
+  if (lives > 0) {
+    setMessage(`You were tackled! Lives left: ${lives}`, 140);
+    resetQB();
+    startLevelCountdown();
+  } else {
+    // update high score
+    if (touchdowns > highScore) {
+      highScore = touchdowns;
+      localStorage.setItem("cfbHighScore", String(highScore));
+    }
+
+    const rank = getRank(touchdowns);
+    setMessage(
+      `Season over! TDs: ${touchdowns}. Rank: ${rank}. High Score: ${highScore} TDs. Press Space to start again.`,
+      -1
+    );
+    gameState = "gameOver";
+  }
+}
+
+function update() {
+  // below-field message timer
+  if (messageTimer > 0) {
+    messageTimer--;
+    if (messageTimer === 0) {
+      statusEl.textContent = "";
+    }
+  }
+
+  // big announcement timer
+  if (bigAnnounceTimer > 0) {
+    bigAnnounceTimer--;
+    if (bigAnnounceTimer === 0) {
+      bigAnnounceText = "";
+    }
+  }
+
+  if (gameState !== "playing") return;
+
+  // COUNTDOWN PHASE
+  if (levelPhase === "countdown") {
+    countdownTimer++;
+    if (countdownTimer >= 120) {
+      levelPhase = "playing";
+    }
+    return;
+  }
+
+  // PLAY PHASE
+  handleInput();
+
+  // Move defenders with random wandering + wall slowdown
+  defenders.forEach(d => {
+    // small random direction jitter
+    if (Math.random() < 0.02) {
+      const angleChange = (Math.random() - 0.5) * 0.6;
+      const speed = Math.hypot(d.vx, d.vy);
+      let angle = Math.atan2(d.vy, d.vx) + angleChange;
+      d.vx = Math.cos(angle) * speed;
+      d.vy = Math.sin(angle) * speed;
+    }
+
+    d.x += d.vx;
+    d.y += d.vy;
+
+    // Bounce off left/right
+    if (d.x <= 5) {
+      d.x = 5;
+      d.vx *= -1;
+    }
+    if (d.x + d.w >= canvas.width - 5) {
+      d.x = canvas.width - 5 - d.w;
+      d.vx *= -1;
+    }
+
+    // Bounce off top
+    const topLimit = 70;
+    if (d.y <= topLimit) {
+      d.y = topLimit;
+      d.vy *= -1;
+    }
+
+    // Bounce off line of scrimmage (defenders CANNOT cross LOS_Y)
+    if (d.y + d.h >= LOS_Y) {
+      d.y = LOS_Y - d.h;
+      d.vy *= -1;
+    }
+
+// --- WALL SLOWDOWN / RESTORE SPEED LOGIC ---
+     const leftDist = d.x;
+     const rightDist = canvas.width - (d.x + d.w);
+     const distToWall = Math.min(leftDist, rightDist);
+
+        const maxZone = 120; // slow when closer than 120px from side walls
+        let factor = distToWall / maxZone;
+
+        // Clamp slowdown factor between 0.4 (slow) and 1 (normal)
+        if (factor < 0.4) factor = 0.4;
+        if (factor > 1) factor = 1;
+
+        const currentSpeed = Math.hypot(d.vx, d.vy);
+        const desiredSpeed = d.baseSpeed * factor;
+
+        // Apply slowdown OR speed-up
+        if (currentSpeed > 0 && Math.abs(desiredSpeed - currentSpeed) > 0.05) {
+            const scale = desiredSpeed / currentSpeed;
+            d.vx *= scale;
+            d.vy *= scale;
+        }
+
+  });
+
+  // Check collisions
+  for (const d of defenders) {
+    if (isColliding(qb, d)) {
+      handleTackle();
+      break;
+    }
+  }
+
+  // Touchdown if QB reaches end zone (top band)
+  if (qb.y <= 50) {
+    handleTouchdown();
+  }
+}
+
+// --- DRAWING ---
+function drawField() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // field background
+  ctx.fillStyle = "#1b7f1b";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // end zone at top
+  ctx.fillStyle = "#0044aa";
+  ctx.fillRect(0, 40, canvas.width, 30);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "14px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("END ZONE", canvas.width / 2, 60);
+  ctx.textAlign = "left";
+
+  // line of scrimmage
+  ctx.strokeStyle = "#ffdd55";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, LOS_Y);
+  ctx.lineTo(canvas.width, LOS_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#ffdd55";
+  ctx.font = "12px Arial";
+  ctx.fillText("Line of Scrimmage", 10, LOS_Y - 8);
+
+  // yard lines
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  for (let y = 100; y < canvas.height; y += 50) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  // scoreboard bar
+  ctx.fillStyle = "#222222";
+  ctx.fillRect(0, 0, canvas.width, 40);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "15px Arial";
+  ctx.fillText(`Level: ${level}`, 10, 25);
+  ctx.fillText(`TDs: ${touchdowns}`, 100, 25);
+  ctx.fillText(`Lives: ${lives}/${MAX_LIVES}`, 190, 25);
+  ctx.fillText(`Tackles: ${tackles}`, 320, 25);
+  ctx.fillText(`High Score: ${highScore}`, 430, 25);
+
+  // COUNTDOWN TEXT OVERLAY
+  if (gameState === "playing" && levelPhase === "countdown") {
+    ctx.textAlign = "center";
+    ctx.font = "32px Arial Black";
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    if (countdownTimer < 60) {
+      ctx.fillText("SET...", centerX, centerY);
+    } else {
+      ctx.fillText("HIKE!", centerX, centerY);
+    }
+    ctx.textAlign = "left";
+  }
+
+  // BIG ANNOUNCEMENT TEXT (e.g. Championship / Heisman)
+  if (bigAnnounceTimer > 0 && bigAnnounceText) {
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = "34px Arial Black";
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(20, canvas.height/2 - 40, canvas.width - 40, 80);
+
+    ctx.fillStyle = "#ffd700";
+    ctx.fillText(bigAnnounceText, canvas.width/2, canvas.height/2 + 10);
+    ctx.restore();
+  }
+}
+
+function drawPlayers() {
+  // QB
+  ctx.fillStyle = "#ffcc00";
+  ctx.fillRect(qb.x, qb.y, qb.w, qb.h);
+
+  // Defenders
+  defenders.forEach(d => {
+    ctx.fillStyle = "#aa0000";
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+  });
+}
+
+function loop() {
+  update();
+  drawField();
+  drawPlayers();
+  requestAnimationFrame(loop);
+}
+
+// --- START GAME ---
+resetGame();
+loop();
+</script>
+</body>
+</html>

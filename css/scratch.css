@@ -1,0 +1,369 @@
+/* Remove default browser margins */
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Top blue bar */
+.top-bar {
+    background-color: #2e2e3148;  
+    color: rgb(0, 0, 0);
+    padding: 15px 40px;
+}
+
+/* Use flexbox to put title on the left and link on the right */
+.top-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Style the link */
+.back-link {
+    color: #000000;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* Hero Section */
+.hero-section {
+    width: 100%;
+    height: 450px; 
+    background-image: url('../assets/historic_football.webp'); 
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+/* White haze overlay */
+.hero-overlay {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.6); /* 0.6 = 60% opacity haze */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Title text inside the hero */
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #000000; /* deep blue */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.history-section {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    color: #000000;
+    font-family: 'Merriweather', serif;
+    line-height: 1.7;
+}
+
+.history-section h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.history-section hr {
+    width: 120px;
+    margin: 10px auto 30px;
+    border: 2px solid #000000;
+}
+
+/* Section behind the video */
+.video-section {
+    background-color: #eef4ff; /* light blue/gray highlight */
+    padding: 40px 20px;
+    margin-top: 40px;
+    text-align: center;
+}
+
+.video-section h2 {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.video-section hr {
+    width: 150px;
+    margin: 10px auto 30px;
+    border: 2px solid #000000;
+}
+
+/* Responsive YouTube video */
+.video-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.video-container iframe {
+    width: 100%;
+    height: 430px;  /* adjust this number up/down if you want */
+    border-radius: 8px;
+    border: none;
+}
+
+/* Photo Gallery Section */
+.photo-gallery-section {
+    background-color: #f7f9fc;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.photo-gallery-section h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.photo-gallery-section hr {
+    width: 150px;
+    margin: 10px auto 40px;
+    border: 2px solid #003366; /* deep blue */
+}
+
+/* Grid layout for photos */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Individual photo card */
+.photo-card {
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+}
+
+.photo-card:hover {
+    transform: scale(1.03);
+}
+
+.photo-card img {
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+}
+
+.caption {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Fade-in animation */
+.fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Photo Gallery Section */
+.photo-gallery-section {
+    background-color: #f7f9fc;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.photo-gallery-section h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.photo-gallery-section hr {
+    width: 150px;
+    margin: 10px auto 40px;
+    border: 2px solid #003366;
+}
+
+/* Grid layout */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.photo-card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+
+.photo-card:hover {
+    transform: scale(1.03);
+}
+
+.photo-card img {
+    width: 100%;
+    border-radius: 6px;
+}
+
+.caption {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Lightbox Modal */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.lightbox.show {
+    display: flex;
+}
+
+.lightbox-image {
+    max-width: 90%;
+    max-height: 70vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    margin-bottom: 10px;
+}
+
+.lightbox-caption {
+    color: #ffffff;
+    font-size: 1rem;
+    text-align: center;
+    max-width: 80%;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+}
+
+.quick-nav {
+    text-align: center;
+    margin: 20px 0 10px;
+}
+
+.quick-nav a {
+    color: #1e3a8a;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.quick-nav a:hover {
+    text-decoration: underline;
+}
+
+.history-list-section {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #f7f9ff;
+    border-radius: 8px;
+    font-family: 'Merriweather', serif;
+}
+
+.history-list-section h2 {
+    text-align: center;
+}
+
+.history-list-section hr {
+    width: 160px;
+    margin: 10px auto 25px;
+    border: 2px solid #1e3a8a;
+}
+
+.history-list-section ol {
+    margin-left: 20px;
+}
+
+.history-list-section ul {
+    margin-top: 8px;
+    margin-bottom: 16px;
+}
+
+.history-list-section li {
+    margin-bottom: 6px;
+}
+
+/* Back to Top Button */
+#backToTop {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background-color: #1e3a8a; /* deep blue to match theme */
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    display: none; /* hidden by default */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+    transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+#backToTop:hover {
+    background-color: #274ac0;
+    transform: translateY(-2px);
+}
+
+.tableau-section {
+    max-width: 1100px;
+    margin: 50px auto;
+    text-align: center;
+}
+
+.tableau-section h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.tableau-section hr {
+    width: 180px;
+    margin: 10px auto 25px;
+    border: 2px solid #000;
+}
+
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;
+    font-weight: bold;
+    color: black;
+    transition: 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: #003399; /* deep blue highlight */
+}
